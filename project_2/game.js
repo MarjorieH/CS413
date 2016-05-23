@@ -2,7 +2,7 @@
 * Marjorie Hahn
 * CS413: Virtual Worlds
 * Project 2: Puzzles
-* 22 May 2016
+* 23 May 2016
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -252,39 +252,29 @@ var successtexture = PIXI.Texture.fromImage('assets/successfloor.png');
 var walltexture = PIXI.Texture.fromImage('assets/wall.png');
 var charactertexture = PIXI.Texture.fromImage('assets/character.png');
 
-// helper function to clear the current game data
-function cleanGame() {
-	walls.removeChildren();
-	untouchedfloor.removeChildren();
-	touchedfloor.removeChildren();
-	character.removeChildren();
-}
+var currentLevel = 1;
+
+// variables to keep track of number of walls and floor tiles
+var totaluntouched = 0;
+var totaltouched = 0;
+var totalwalls = 0;
 
 function gameInteract() {
+
+	// helper function to clear the current game data
+	function cleanGame() {
+		walls.removeChildren();
+		untouchedfloor.removeChildren();
+		touchedfloor.removeChildren();
+		character.removeChildren();
+		totaluntouched = 0;
+		totaltouched = 0;
+		totalwalls = 0;
+	}
 	cleanGame(); // make sure any previous game data is gone
 	document.addEventListener('keydown', gameEventHandler);
 
-	// variables to keep track of number of walls and floor tiles
-	var totaluntouched = 0;
-	var totaltouched = 0;
-	var totalwalls = 0;
-	var winstate = 0; // 0 = neutral; 1 = win; 2 = lose
-
-	// place the sprites into the map
-	for (i = 0; i < 10; i++) {
-		for (j = 0; j < 10; j++) {
-			if (i <= 2 || i >= 7 || j <= 2 || j >= 7) {
-				placeSprite(2, i, j);
-			}
-			else {
-				placeSprite(1, i, j);
-			}
-		}
-	}
-	placeSprite(0, 6, 6);
-	var startpoint = new PIXI.Point(416, 416);
-	checkCollisions(startpoint);
-
+	loadLevel(currentLevel);
 	// places sprites on map given the sprite type, x position, and y position
 	// think of the map as a 10x10 grid
 	function placeSprite(type, x_pos, y_pos) {
@@ -316,30 +306,109 @@ function gameInteract() {
 		sprite.position.y = 32 + y_pos * 64;
 	}
 
-	function gameEventHandler(e) {
+	// helper function to place sprites into the map based on the level number
+	function loadLevel(level) {
 
-		if (winstate == 0) { // only allow moves if there has not been a win/loss yet
-			var charsprite = character.getChildAt(0);
-			var new_position = new PIXI.Point(charsprite.position.x, charsprite.position.y);
+		// load level 1
+		if (level == 1) {
+			for (i = 0; i < 10; i++) {
+				for (j = 0; j < 10; j++) {
+					if (i <= 2 || i >= 7 || j <= 2 || j >= 7) {
+						placeSprite(2, i, j);
+					}
+					else {
+						placeSprite(1, i, j);
+					}
+				}
+			}
+			placeSprite(0, 6, 6);
+			var startpoint = new PIXI.Point(416, 416);
+			checkCollisions(startpoint);
+		}
 
-			if (e.keyCode == 87) { // W key
-				new_position.y = charsprite.position.y - 64;
+		// load level 2
+		else if (level == 2) {
+			for (i = 0; i < 10; i++) {
+				for (j = 0; j < 10; j++) {
+					if (i <= 1 || i >= 8 || j <= 2 || j >= 7
+							|| (i == 3 && j == 4) || (i == 6 && j == 4)) {
+						placeSprite(2, i, j);
+					}
+					else {
+						placeSprite(1, i, j);
+					}
+				}
 			}
-			else if (e.keyCode == 83) { // S key
-				new_position.y = charsprite.position.y + 64;
-			}
-			else if (e.keyCode == 65) { // A key
-				new_position.x = charsprite.position.x - 64;
-			}
-			else if (e.keyCode == 68) { // D key
-				new_position.x = charsprite.position.x + 64;
-			}
+			placeSprite(0, 4, 6);
+			var startpoint = new PIXI.Point(288, 416);
+			checkCollisions(startpoint);
+		}
 
-			var result = checkCollisions(new_position);
-			if (result == 0) { // no collisions found
-				charsprite.position.y = new_position.y;
-				charsprite.position.x = new_position.x;
+		// load level 3
+		else if (level == 3) {
+			for (i = 0; i < 10; i++) {
+				for (j = 0; j < 10; j++) {
+					if (i <= 1 || i >= 8 || j <= 1 || j >= 8
+							|| (i == 3 && j > 2 && j < 6)
+							|| (j == 5 && i > 2 && i < 6)
+							|| (i == 6 && j == 3)
+							|| (i == 6 && j == 6)
+							|| (i == 4 && j == 7) ) {
+						placeSprite(2, i, j);
+					}
+					else {
+						placeSprite(1, i, j);
+					}
+				}
 			}
+			placeSprite(0, 7, 7);
+			var startpoint = new PIXI.Point(480, 480);
+			checkCollisions(startpoint);
+		}
+
+		// load level 4
+		else if (level == 4) {
+			for (i = 0; i < 10; i++) {
+				for (j = 0; j < 10; j++) {
+					if (i == 0 || i == 9 || j <= 1 || j >= 8
+							|| (j == 3 && i > 1 && i < 5)
+							|| (i == 4 && j > 2 && j < 6)
+							|| (i == 6 && j > 1 && j < 4)
+							|| (i == 7 && j == 5)
+							|| (j == 7 && i > 1 && i < 7 && i != 4) ) {
+						placeSprite(2, i, j);
+					}
+					else {
+						placeSprite(1, i, j);
+					}
+				}
+			}
+			placeSprite(0, 4, 7);
+			var startpoint = new PIXI.Point(288, 480);
+			checkCollisions(startpoint);
+		}
+
+		// load level 5
+		else if (level == 5) {
+			for (i = 0; i < 10; i++) {
+				for (j = 0; j < 10; j++) {
+					if (i == 0 || i == 9 || j == 0 || j == 9
+							|| (j == 3 && i > 3 && i < 6)
+							|| (j == 2 && i > 1 && i < 8 && i != 4 && i != 5)
+							|| (j == 4 && i > 0 && i < 3)
+							|| (j == 5 && i > 5 && i < 8)
+							|| (i == 6 && j > 6 && j < 9)
+							|| (j == 6 && i > 2 && i < 5) ) {
+						placeSprite(2, i, j);
+					}
+					else {
+						placeSprite(1, i, j);
+					}
+				}
+			}
+			placeSprite(0, 3, 4);
+			var startpoint = new PIXI.Point(224, 288);
+			checkCollisions(startpoint);
 		}
 	}
 
@@ -360,7 +429,7 @@ function gameInteract() {
 			var floor = touchedfloor.getChildAt(i);
 			if (floor.position.equals(new_position)) { // check for a loss
 				floor.texture = failtexture;
-				winstate = 2;
+				currentLevel = 1; // reset levels
 				document.removeEventListener('keydown', gameEventHandler);
 				loadScreen(losescreen);
 				return 0;
@@ -374,10 +443,18 @@ function gameInteract() {
 				totaluntouched--;
 				if (totaluntouched == 0) { // check for a win
 					floor.texture = successtexture;
-					winstate = 1;
-					document.removeEventListener('keydown', gameEventHandler);
-					loadScreen(winscreen);
-					return 0;
+					if (currentLevel == 5) { // won final level
+						currentLevel = 1; // reset levels
+						document.removeEventListener('keydown', gameEventHandler);
+						loadScreen(winscreen);
+						return 0;
+					}
+					else { // increment level and play again
+						currentLevel++;
+						document.removeEventListener('keydown', gameEventHandler);
+						gameInteract();
+						return 0;
+					}
 				}
 				else { // no win, change sprite to touched
 					untouchedfloor.removeChildAt(i);
@@ -386,7 +463,31 @@ function gameInteract() {
 				}
 			}
 		}
-
 		return 0;
+	}
+
+	// main event handler for the game
+	function gameEventHandler(e) {
+		var charsprite = character.getChildAt(0);
+		var new_position = new PIXI.Point(charsprite.position.x, charsprite.position.y);
+
+		if (e.keyCode == 87) { // W key
+			new_position.y = charsprite.position.y - 64;
+		}
+		else if (e.keyCode == 83) { // S key
+			new_position.y = charsprite.position.y + 64;
+		}
+		else if (e.keyCode == 65) { // A key
+			new_position.x = charsprite.position.x - 64;
+		}
+		else if (e.keyCode == 68) { // D key
+			new_position.x = charsprite.position.x + 64;
+		}
+
+		var result = checkCollisions(new_position);
+		if (result == 0) { // no collisions found, move character
+			charsprite.position.y = new_position.y;
+			charsprite.position.x = new_position.x;
+		}
 	}
 }
