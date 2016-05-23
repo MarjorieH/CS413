@@ -79,8 +79,23 @@ function loadScreen(newscreen) {
 }
 loadScreen(title); // initialize to the title screen
 
+// Game Loop
+var time; // previous time from last request
+var dt = 0; // current change in time since last request
+var interval = 0; // keeps track of an interval of miliseconds
+var canmove = false; // bool to prevent new move while character is moving
 function animate() {
 	requestAnimationFrame(animate);
+	var now = new Date().getTime();
+	dt = now - (time || now);
+	interval += dt;
+	time = now;
+
+	if (interval > 150) { // check interval
+		canmove = true;
+		interval = 0;
+	}
+
 	renderer.render(stage);
 }
 animate();
@@ -468,26 +483,30 @@ function gameInteract() {
 
 	// main event handler for the game
 	function gameEventHandler(e) {
-		var charsprite = character.getChildAt(0);
-		var new_position = new PIXI.Point(charsprite.position.x, charsprite.position.y);
+		e.preventDefault();
 
-		if (e.keyCode == 87) { // W key
-			new_position.y = charsprite.position.y - 64;
-		}
-		else if (e.keyCode == 83) { // S key
-			new_position.y = charsprite.position.y + 64;
-		}
-		else if (e.keyCode == 65) { // A key
-			new_position.x = charsprite.position.x - 64;
-		}
-		else if (e.keyCode == 68) { // D key
-			new_position.x = charsprite.position.x + 64;
-		}
+		if (canmove == true) { // if allowed to move
+			var charsprite = character.getChildAt(0);
+			var new_position = new PIXI.Point(charsprite.position.x, charsprite.position.y);
 
-		var result = checkCollisions(new_position);
-		if (result == 0) { // no collisions found, move character
-			charsprite.position.y = new_position.y;
-			charsprite.position.x = new_position.x;
+			if (e.keyCode == 87) { // W key
+				new_position.y = charsprite.position.y - 64;
+			}
+			else if (e.keyCode == 83) { // S key
+				new_position.y = charsprite.position.y + 64;
+			}
+			else if (e.keyCode == 65) { // A key
+				new_position.x = charsprite.position.x - 64;
+			}
+			else if (e.keyCode == 68) { // D key
+				new_position.x = charsprite.position.x + 64;
+			}
+			var result = checkCollisions(new_position);
+			if (result == 0) { // no collisions found, move character
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 100, createjs.Ease.quintInOut);
+			}
+			canmove = false; // prevent movement
+			interval = 0; // reset interval
 		}
 	}
 }
