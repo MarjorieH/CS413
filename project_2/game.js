@@ -13,6 +13,25 @@ var gameport = document.getElementById("gameport");
 var renderer = PIXI.autoDetectRenderer(640, 640);
 gameport.appendChild(renderer.view);
 
+var floortexture;
+var alerttexture;
+var failtexture;
+var successtexture;
+var walltexture;
+var charactertexture;
+
+// load in game textures from sprite sheet
+PIXI.loader.add("assets/gamesprites.json").load(ready);
+function ready() {
+	// load in game textures
+	floortexture = new PIXI.Texture.fromFrame("floor.png");
+	alerttexture = new PIXI.Texture.fromFrame('alertfloor.png');
+	failtexture = new PIXI.Texture.fromFrame('failfloor.png');
+	successtexture = new PIXI.Texture.fromFrame('successfloor.png');
+	walltexture = new PIXI.Texture.fromFrame('wall.png');
+	charactertexture = new PIXI.Texture.fromFrame('character.png');
+}
+
 // set up stage and main pixi containers for sprites in the game
 var stage = new PIXI.Container();
 var game = new PIXI.Container();
@@ -91,7 +110,7 @@ function animate() {
 	interval += dt;
 	time = now;
 
-	if (interval > 150) { // check interval
+	if (interval > 120) { // reset interval after 120 miliseconds
 		canmove = true;
 		interval = 0;
 	}
@@ -259,13 +278,6 @@ environment.addChild(floortiles);
 floortiles.addChild(untouchedfloor);
 floortiles.addChild(touchedfloor);
 
-// load in game textures
-var floortexture = PIXI.Texture.fromImage('assets/floor.png');
-var alerttexture = PIXI.Texture.fromImage('assets/alertfloor.png');
-var failtexture = PIXI.Texture.fromImage('assets/failfloor.png');
-var successtexture = PIXI.Texture.fromImage('assets/successfloor.png');
-var walltexture = PIXI.Texture.fromImage('assets/wall.png');
-var charactertexture = PIXI.Texture.fromImage('assets/character.png');
 
 var currentLevel = 1;
 
@@ -429,6 +441,7 @@ function gameInteract() {
 
 	// helper function to check for collisions
 	// 0 = no collisions; 1 = collision, prevent move
+	// 2 = won level; 3 = won final level; 4 = lose
 	function checkCollisions(new_position) {
 
 		// check wall collisions
@@ -444,10 +457,7 @@ function gameInteract() {
 			var floor = touchedfloor.getChildAt(i);
 			if (floor.position.equals(new_position)) { // check for a loss
 				floor.texture = failtexture;
-				currentLevel = 1; // reset levels
-				document.removeEventListener('keydown', gameEventHandler);
-				loadScreen(losescreen);
-				return 0;
+				return 4;
 			}
 		}
 
@@ -459,16 +469,10 @@ function gameInteract() {
 				if (totaluntouched == 0) { // check for a win
 					floor.texture = successtexture;
 					if (currentLevel == 5) { // won final level
-						currentLevel = 1; // reset levels
-						document.removeEventListener('keydown', gameEventHandler);
-						loadScreen(winscreen);
-						return 0;
+						return 3;
 					}
 					else { // increment level and play again
-						currentLevel++;
-						document.removeEventListener('keydown', gameEventHandler);
-						gameInteract();
-						return 0;
+						return 2;
 					}
 				}
 				else { // no win, change sprite to touched
@@ -503,7 +507,25 @@ function gameInteract() {
 			}
 			var result = checkCollisions(new_position);
 			if (result == 0) { // no collisions found, move character
-				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 100, createjs.Ease.quintInOut);
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+			}
+			else if (result == 2) { // player won level
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+				currentLevel++; // go to next level
+				document.removeEventListener('keydown', gameEventHandler);
+				setTimeout(gameInteract, 1200);
+			}
+			else if (result == 3) { // player won final level
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+				currentLevel = 1; // reset levels
+				document.removeEventListener('keydown', gameEventHandler);
+				setTimeout(loadScreen.bind(null, winscreen), 1200);
+			}
+			else if (result == 4) { // player lost
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+				currentLevel = 1; // reset levels
+				document.removeEventListener('keydown', gameEventHandler);
+				setTimeout(loadScreen.bind(null, losescreen), 1200);
 			}
 			canmove = false; // prevent movement
 			interval = 0; // reset interval
