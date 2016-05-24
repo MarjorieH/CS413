@@ -2,6 +2,7 @@
 * Marjorie Hahn
 * CS413: Virtual Worlds
 * Project 2: Puzzles
+* Square Step
 * 23 May 2016
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -13,23 +14,42 @@ var gameport = document.getElementById("gameport");
 var renderer = PIXI.autoDetectRenderer(640, 640);
 gameport.appendChild(renderer.view);
 
+// load in game textures from sprite sheet
+var background;
+var buttontexture;
 var floortexture;
 var alerttexture;
 var failtexture;
 var successtexture;
 var walltexture;
 var charactertexture;
-
-// load in game textures from sprite sheet
 PIXI.loader.add("assets/gamesprites.json").load(ready);
 function ready() {
-	// load in game textures
-	floortexture = new PIXI.Texture.fromFrame("floor.png");
+	background = new PIXI.Texture.fromFrame('screenbackground.png');
+	buttontexture = new PIXI.Texture.fromFrame('genericbutton.png');
+	floortexture = new PIXI.Texture.fromFrame('floor.png');
 	alerttexture = new PIXI.Texture.fromFrame('alertfloor.png');
 	failtexture = new PIXI.Texture.fromFrame('failfloor.png');
 	successtexture = new PIXI.Texture.fromFrame('successfloor.png');
 	walltexture = new PIXI.Texture.fromFrame('wall.png');
 	charactertexture = new PIXI.Texture.fromFrame('character.png');
+}
+
+// load in game sounds
+var movesound;
+var winsound;
+var losesound;
+PIXI.loader.add("assets/move.mp3").load(movesoundfn);
+PIXI.loader.add("assets/win.mp3").load(winsoundfn);
+PIXI.loader.add("assets/losesound.mp3").load(losesoundfn);
+function movesoundfn() {
+	movesound = PIXI.audioManager.getAudio("assets/move.mp3");
+}
+function winsoundfn() {
+	winsound = PIXI.audioManager.getAudio("assets/win.mp3");
+}
+function losesoundfn() {
+	losesound = PIXI.audioManager.getAudio("assets/losesound.mp3");
 }
 
 // set up stage and main pixi containers for sprites in the game
@@ -47,26 +67,6 @@ var walls = new PIXI.Container();
 var floortiles = new PIXI.Container();
 var untouchedfloor = new PIXI.Container();
 var touchedfloor = new PIXI.Container();
-
-// load in main screen textures
-var titletexture = PIXI.Texture.fromImage('assets/mainmenu.png');
-var titlesprite = new PIXI.Sprite(titletexture);
-title.addChild(titlesprite);
-var menutexture = PIXI.Texture.fromImage('assets/mainmenu.png');
-var menusprite = new PIXI.Sprite(menutexture);
-menu.addChild(menusprite);
-var instructionstexture = PIXI.Texture.fromImage('assets/mainmenu.png');
-var instructionssprite = new PIXI.Sprite(instructionstexture);
-instructions.addChild(instructionssprite);
-var wintexture = PIXI.Texture.fromImage('assets/mainmenu.png');
-var winsprite = new PIXI.Sprite(wintexture);
-winscreen.addChild(winsprite);
-var losetexture = PIXI.Texture.fromImage('assets/mainmenu.png');
-var losesprite = new PIXI.Sprite(losetexture);
-losescreen.addChild(losesprite);
-var creditstexture = PIXI.Texture.fromImage('assets/mainmenu.png');
-var creditssprite = new PIXI.Sprite(creditstexture);
-credits.addChild(creditssprite);
 
 // function to load a new screen to the game
 function loadScreen(newscreen) {
@@ -110,7 +110,7 @@ function animate() {
 	interval += dt;
 	time = now;
 
-	if (interval > 120) { // reset interval after 120 miliseconds
+	if (interval > 150) { // reset interval after 150 miliseconds
 		canmove = true;
 		interval = 0;
 	}
@@ -124,13 +124,29 @@ animate();
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function titleInteract() {
-	var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
-	var menubutton = new PIXI.Sprite(buttontexture);
+	title.removeChildren(); // clean up title
+	var titletexture = PIXI.Texture.fromImage('assets/screenbackground.png');
+	var titlesprite = new PIXI.Sprite(titletexture);
+	title.addChild(titlesprite);
 
+	var menubutton = new PIXI.Sprite(PIXI.Texture.fromImage('assets/genericbutton.png'));
 	menubutton.position.x = 192;
 	menubutton.position.y = 512;
-
 	title.addChild(menubutton);
+
+	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	menutext.anchor.x = 0.5;
+	menutext.anchor.y = 0.5;
+	menutext.position.x = 128;
+	menutext.position.y = 32;
+	menubutton.addChild(menutext);
+
+	var titletext = new PIXI.Text('WELCOME TO SQUARE STEP', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+	titletext.anchor.x = 0.5;
+	titletext.anchor.y = 0.5;
+	titletext.position.x = 320;
+	titletext.position.y = 320;
+	title.addChild(titletext);
 
 	menubutton.interactive = true;
 	menubutton.on('mousedown', handleMenu);
@@ -145,7 +161,17 @@ function titleInteract() {
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function menuInteract() {
-	var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
+	menu.removeChildren(); // clean up menu
+	var menutexture = PIXI.Texture.fromImage('assets/screenbackground.png');
+	var menusprite = new PIXI.Sprite(menutexture);
+	menu.addChild(menusprite);
+
+	var menutext = new PIXI.Text('MAIN MENU', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+	menutext.anchor.x = 0.5;
+	menutext.anchor.y = 0.5;
+	menutext.position.x = 320;
+	menutext.position.y = 128;
+	menu.addChild(menutext);
 
 	var instrucbutton = new PIXI.Sprite(buttontexture);
 	var playbutton = new PIXI.Sprite(buttontexture);
@@ -153,12 +179,30 @@ function menuInteract() {
 
 	instrucbutton.position.x = 192;
 	instrucbutton.position.y = 256;
+	var instructext = new PIXI.Text('INSTRUCTIONS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	instructext.anchor.x = 0.5;
+	instructext.anchor.y = 0.5;
+	instructext.position.x = 128;
+	instructext.position.y = 32;
+	instrucbutton.addChild(instructext);
 
 	playbutton.position.x = 192;
 	playbutton.position.y = 384;
+	var playtext = new PIXI.Text('PLAY', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	playtext.anchor.x = 0.5;
+	playtext.anchor.y = 0.5;
+	playtext.position.x = 128;
+	playtext.position.y = 32;
+	playbutton.addChild(playtext);
 
 	creditbutton.position.x = 192;
 	creditbutton.position.y = 512;
+	var credittext = new PIXI.Text('CREDITS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	credittext.anchor.x = 0.5;
+	credittext.anchor.y = 0.5;
+	credittext.position.x = 128;
+	credittext.position.y = 32;
+	creditbutton.addChild(credittext);
 
 	menu.addChild(instrucbutton);
 	menu.addChild(playbutton);
@@ -187,13 +231,29 @@ function menuInteract() {
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function instructionsInteract() {
-	var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
-	var menubutton = new PIXI.Sprite(buttontexture);
+	instructions.removeChildren(); // clean up instructions
+	var instructionstexture = PIXI.Texture.fromImage('assets/screenbackground.png');
+	var instructionssprite = new PIXI.Sprite(instructionstexture);
+	instructions.addChild(instructionssprite);
 
+	var menubutton = new PIXI.Sprite(buttontexture);
 	menubutton.position.x = 192;
 	menubutton.position.y = 512;
-
 	instructions.addChild(menubutton);
+
+	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	menutext.anchor.x = 0.5;
+	menutext.anchor.y = 0.5;
+	menutext.position.x = 128;
+	menutext.position.y = 32;
+	menubutton.addChild(menutext);
+
+	var instructext = new PIXI.Text("INSTRUCTIONS: Move the orange gem using the WASD keys to touch all of the blue tiles. Do not pass over the same tile twice.", {font : '24px Lucida Console, Monaco, monospace', fill: 0x5fcde4, wordWrap : true, wordWrapWidth : 500});
+	instructext.anchor.x = 0.5;
+	instructext.anchor.y = 0.5;
+	instructext.position.x = 320;
+	instructext.position.y = 320;
+	instructions.addChild(instructext);
 
 	menubutton.interactive = true;
 	menubutton.on('mousedown', handleMenu);
@@ -208,13 +268,29 @@ function instructionsInteract() {
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function creditsInteract() {
-	var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
-	var menubutton = new PIXI.Sprite(buttontexture);
+	credits.removeChildren(); // clean up credits screen
+	var creditstexture = PIXI.Texture.fromImage('assets/screenbackground.png');
+	var creditssprite = new PIXI.Sprite(creditstexture);
+	credits.addChild(creditssprite);
 
+	var menubutton = new PIXI.Sprite(buttontexture);
 	menubutton.position.x = 192;
 	menubutton.position.y = 512;
-
 	credits.addChild(menubutton);
+
+	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	menutext.anchor.x = 0.5;
+	menutext.anchor.y = 0.5;
+	menutext.position.x = 128;
+	menutext.position.y = 32;
+	menubutton.addChild(menutext);
+
+	var credittext = new PIXI.Text("Game Development, Art, and Sound Effects by Marjorie Hahn", {font : '24px Lucida Console, Monaco, monospace', fill: 0x5fcde4, wordWrap : true, align: 'center', wordWrapWidth : 500});
+	credittext.anchor.x = 0.5;
+	credittext.anchor.y = 0.5;
+	credittext.position.x = 320;
+	credittext.position.y = 320;
+	credits.addChild(credittext);
 
 	menubutton.interactive = true;
 	menubutton.on('mousedown', handleMenu);
@@ -229,13 +305,29 @@ function creditsInteract() {
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function loseInteract() {
-	var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
-	var menubutton = new PIXI.Sprite(buttontexture);
+	losescreen.removeChildren(); // clean up losescreen
+	var losetexture = PIXI.Texture.fromImage('assets/screenbackground.png');
+	var losesprite = new PIXI.Sprite(losetexture);
+	losescreen.addChild(losesprite);
 
+	var menubutton = new PIXI.Sprite(buttontexture);
 	menubutton.position.x = 192;
 	menubutton.position.y = 512;
-
 	losescreen.addChild(menubutton);
+
+	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	menutext.anchor.x = 0.5;
+	menutext.anchor.y = 0.5;
+	menutext.position.x = 128;
+	menutext.position.y = 32;
+	menubutton.addChild(menutext);
+
+	var titletext = new PIXI.Text('YOU LOSE! :(', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+	titletext.anchor.x = 0.5;
+	titletext.anchor.y = 0.5;
+	titletext.position.x = 320;
+	titletext.position.y = 320;
+	losescreen.addChild(titletext);
 
 	menubutton.interactive = true;
 	menubutton.on('mousedown', handleMenu);
@@ -250,13 +342,29 @@ function loseInteract() {
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function winInteract() {
-	var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
-	var menubutton = new PIXI.Sprite(buttontexture);
+	winscreen.removeChildren(); // clean up winscreen
+	var wintexture = PIXI.Texture.fromImage('assets/screenbackground.png');
+	var winsprite = new PIXI.Sprite(wintexture);
+	winscreen.addChild(winsprite);
 
+	var menubutton = new PIXI.Sprite(buttontexture);
 	menubutton.position.x = 192;
 	menubutton.position.y = 512;
-
 	winscreen.addChild(menubutton);
+
+	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	menutext.anchor.x = 0.5;
+	menutext.anchor.y = 0.5;
+	menutext.position.x = 128;
+	menutext.position.y = 32;
+	menubutton.addChild(menutext);
+
+	var titletext = new PIXI.Text('YOU WIN! :)', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+	titletext.anchor.x = 0.5;
+	titletext.anchor.y = 0.5;
+	titletext.position.x = 320;
+	titletext.position.y = 320;
+	winscreen.addChild(titletext);
 
 	menubutton.interactive = true;
 	menubutton.on('mousedown', handleMenu);
@@ -277,7 +385,6 @@ environment.addChild(walls);
 environment.addChild(floortiles);
 floortiles.addChild(untouchedfloor);
 floortiles.addChild(touchedfloor);
-
 
 var currentLevel = 1;
 
@@ -302,6 +409,7 @@ function gameInteract() {
 	document.addEventListener('keydown', gameEventHandler);
 
 	loadLevel(currentLevel);
+
 	// places sprites on map given the sprite type, x position, and y position
 	// think of the map as a 10x10 grid
 	function placeSprite(type, x_pos, y_pos) {
@@ -335,7 +443,6 @@ function gameInteract() {
 
 	// helper function to place sprites into the map based on the level number
 	function loadLevel(level) {
-
 		// load level 1
 		if (level == 1) {
 			for (i = 0; i < 10; i++) {
@@ -437,6 +544,12 @@ function gameInteract() {
 			var startpoint = new PIXI.Point(224, 288);
 			checkCollisions(startpoint);
 		}
+		/*var leveltxt = new PIXI.Text('LEVEL', {font : '20px Lucida Console, Monaco, monospace', fill: 0xff9751 , align : 'center'});
+		leveltxt.anchor.x = 0.5;
+		leveltxt.anchor.y = 0.5;
+		leveltxt.position.x = 320;
+		leveltxt.position.y = 32;
+		environment.addChild(leveltxt);*/
 	}
 
 	// helper function to check for collisions
@@ -489,7 +602,7 @@ function gameInteract() {
 	function gameEventHandler(e) {
 		e.preventDefault();
 
-		if (canmove == true) { // if allowed to move
+		if (canmove == true && (e.keyCode == 87 || e.keyCode == 83 || e.keyCode == 65 || e.keyCode == 68) ) { // if allowed to move
 			var charsprite = character.getChildAt(0);
 			var new_position = new PIXI.Point(charsprite.position.x, charsprite.position.y);
 
@@ -507,24 +620,28 @@ function gameInteract() {
 			}
 			var result = checkCollisions(new_position);
 			if (result == 0) { // no collisions found, move character
-				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 150, createjs.Ease.quintInOut);
+				movesound.play();
 			}
 			else if (result == 2) { // player won level
-				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 150, createjs.Ease.quintInOut);
 				currentLevel++; // go to next level
 				document.removeEventListener('keydown', gameEventHandler);
-				setTimeout(gameInteract, 1200);
+				winsound.play();
+				setTimeout(gameInteract, 1500);
 			}
 			else if (result == 3) { // player won final level
-				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 150, createjs.Ease.quintInOut);
 				currentLevel = 1; // reset levels
 				document.removeEventListener('keydown', gameEventHandler);
-				setTimeout(loadScreen.bind(null, winscreen), 1200);
+				winsound.play();
+				setTimeout(loadScreen.bind(null, winscreen), 1500);
 			}
 			else if (result == 4) { // player lost
-				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 120, createjs.Ease.quintInOut);
+				createjs.Tween.get(charsprite.position).to({x: new_position.x, y: new_position.y}, 150, createjs.Ease.quintInOut);
 				currentLevel = 1; // reset levels
 				document.removeEventListener('keydown', gameEventHandler);
+				losesound.play();
 				setTimeout(loadScreen.bind(null, losescreen), 1200);
 			}
 			canmove = false; // prevent movement

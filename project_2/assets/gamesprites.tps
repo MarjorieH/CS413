@@ -192,6 +192,8 @@
             <key type="filename">character.png</key>
             <key type="filename">failfloor.png</key>
             <key type="filename">floor.png</key>
+            <key type="filename">genericbutton.png</key>
+            <key type="filename">screenbackground.png</key>
             <key type="filename">successfloor.png</key>
             <key type="filename">wall.png</key>
             <struct type="IndividualSpriteSettings">
@@ -207,6 +209,8 @@
             <filename>floor.png</filename>
             <filename>successfloor.png</filename>
             <filename>wall.png</filename>
+            <filename>genericbutton.png</filename>
+            <filename>screenbackground.png</filename>
         </array>
         <key>ignoreFileList</key>
         <array/>

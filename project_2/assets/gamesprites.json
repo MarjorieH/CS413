@@ -1,26 +1,17 @@
 {"frames": {
 
-"alertfloor.png":
-{
-	"frame": {"x":0,"y":0,"w":64,"h":64},
-	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
-	"sourceSize": {"w":64,"h":64},
-	"pivot": {"x":0.5,"y":0.5}
-},
 "character.png":
 {
-	"frame": {"x":64,"y":0,"w":32,"h":32},
+	"frame": {"x":0,"y":0,"w":32,"h":32},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":32},
 	"sourceSize": {"w":32,"h":32},
 	"pivot": {"x":0.5,"y":0.5}
 },
-"failfloor.png":
+"successfloor.png":
 {
-	"frame": {"x":96,"y":0,"w":64,"h":64},
+	"frame": {"x":32,"y":0,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -29,16 +20,7 @@
 },
 "floor.png":
 {
-	"frame": {"x":160,"y":0,"w":64,"h":64},
-	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
-	"sourceSize": {"w":64,"h":64},
-	"pivot": {"x":0.5,"y":0.5}
-},
-"successfloor.png":
-{
-	"frame": {"x":224,"y":0,"w":64,"h":64},
+	"frame": {"x":96,"y":0,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
@@ -47,11 +29,47 @@
 },
 "wall.png":
 {
+	"frame": {"x":160,"y":0,"w":64,"h":64},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
+	"sourceSize": {"w":64,"h":64},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"alertfloor.png":
+{
+	"frame": {"x":224,"y":0,"w":64,"h":64},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
+	"sourceSize": {"w":64,"h":64},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"failfloor.png":
+{
 	"frame": {"x":288,"y":0,"w":64,"h":64},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
 	"sourceSize": {"w":64,"h":64},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"genericbutton.png":
+{
+	"frame": {"x":352,"y":0,"w":256,"h":64},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":256,"h":64},
+	"sourceSize": {"w":256,"h":64},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"screenbackground.png":
+{
+	"frame": {"x":0,"y":64,"w":640,"h":640},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":640,"h":640},
+	"sourceSize": {"w":640,"h":640},
 	"pivot": {"x":0.5,"y":0.5}
 }},
 "meta": {
@@ -59,8 +77,8 @@
 	"version": "1.0",
 	"image": "gamesprites.png",
 	"format": "RGBA8888",
-	"size": {"w":352,"h":64},
+	"size": {"w":640,"h":704},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:7dc78b15805ec0e10d12c19c5882e654:a56edd00e17f6b79e845b9a0350dea3b:f712bda7cdf1d2116d623abc82f01a91$"
+	"smartupdate": "$TexturePacker:SmartUpdate:c5ce7d2b34a43a3e720bd09bb2126e90:dc01b66737580c4f5e77af1d945f7d08:f712bda7cdf1d2116d623abc82f01a91$"
 }
 }
