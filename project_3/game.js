@@ -10,10 +10,13 @@ var stage = new PIXI.Container();
 var game = new PIXI.Container();
 stage.addChild(game);
 
+var tu = new TileUtilities(PIXI);
+
 // Scene objects get loaded in the ready function
 var player;
 var world;
 var obstacleArray = [];
+var obstacles;
 
 // Character movement constants:
 var MOVE_LEFT = 1;
@@ -30,26 +33,39 @@ function move() {
   }
   player.moving = true;
 
-  if (player.direction == MOVE_LEFT) {
-    new_x = player.x - 64;
-    createjs.Tween.get(player).to({x: new_x}, 100).call(move);
+  var new_x = player.x;
+  var new_y = player.y;
+
+  if (player.direction == MOVE_LEFT) new_x -= 64;
+  else if (player.direction == MOVE_RIGHT) new_x += 64;
+  else if (player.direction == MOVE_UP) new_y -= 64;
+  else if (player.direction == MOVE_DOWN) new_y += 64;
+
+  var collisionsDetected = detectCollisions(new_x, new_y, obstacles);
+  if (collisionsDetected == false) {
+    createjs.Tween.get(player).to({x: new_x, y: new_y}, 200).call(move);
   }
-  else if (player.direction == MOVE_RIGHT) {
-    new_x = player.x + 64;
-    createjs.Tween.get(player).to({x: new_x}, 100).call(move);
-  }
-  else if (player.direction == MOVE_UP) {
-    new_y = player.y - 64;
-    createjs.Tween.get(player).to({y: new_y}, 100).call(move);
-  }
-  else if (player.direction == MOVE_DOWN) {
-    new_y = player.y + 64;
-    createjs.Tween.get(player).to({y: new_y}, 100).call(move);
+  else {
+    player.moving = false;
   }
 }
 
-function detectCollision() {
+// detect collisions over an array of objects
+// assumes the array is anchored in the top left corner
+function detectCollisions(x_pos, y_pos, objects) {
+  for (i = 0; i < objects.length; i++) {
+    if (detectCollision(x_pos, y_pos, objects[i].x + 32, objects[i].y + 32)) return true;
+  }
+  return false;
+}
 
+
+// detects collisions between two points
+// positions must be anchored in the center
+// returns false if no collision, true if there is a collision
+function detectCollision(x1, y1, x2, y2) {
+  if (x1 == x2 && y1 == y2) return true;
+  return false;
 }
 
 // Keydown events start movement
@@ -70,7 +86,7 @@ window.addEventListener("keydown", function (e) {
   else if (e.keyCode == 68)
     player.direction = MOVE_RIGHT;
 
-  move();
+    move();
 });
 
 // Keyup events end movement
@@ -89,23 +105,25 @@ PIXI.loader
   .load(ready);
 
 function ready() {
-  var tu = new TileUtilities(PIXI);
   world = tu.makeTiledWorld("map_json", "tileset.png");
   game.addChild(world);
 
-  obstacleArray = world.getObject("obstacles").data;
-  console.log(obstacleArray.length);
+  // build array of obstacles from world map
+  obstacleLayer = world.getObject("obstacles");
+  obstacles = obstacleLayer.children.map(sprite => {
+    if (sprite.gid !== 0) return sprite;
+  })
 
+  // initialize player sprite
   player = new PIXI.Sprite(PIXI.Texture.fromImage("blob.png"));
-  player.x = 224;
-  player.y = 288;
   player.anchor.x = 0.5;
   player.anchor.y = 0.5;
-
+  player.x = 224;
+  player.y = 288;
   game.addChild(player);
-
   player.direction = MOVE_NONE;
   player.moving = false;
+
   animate();
 
   // Game Loop
