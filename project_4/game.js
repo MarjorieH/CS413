@@ -12,14 +12,14 @@ var GAME_HEIGHT = 640; // width of the gamescreen in pixels
 var TILE_HEIGHT = 40; // height of the tiles in pixels
 var TILE_WIDTH = 40; // width of the tiles in pixels
 var MAP_WIDTH = 16; // width of the map in tiles
-var MAP_HEIGHT = 40; // height of the mpa in tiles
+var MAP_HEIGHT = 440; // height of the map in tiles
 var PLAYERSPEED = 4; // speed of the player in pixels/frame
 var INITIALJUMPSPEED = 25; // speed of jumping in pixels/frame
 var GRAVITY = 0.98;
 var MAXACORNS = 50;
-var WINTERSPEED = 0.2;
-var WINHEIGHT = 100; // distance from the top to win
-var TIMEOUT = 3000; // miliseconds before win/lose screen is displayed
+var WINTERSPEED = 0.5;
+var WINHEIGHT = 560; // distance from the top to win
+var TIMEOUT = 1200; // miliseconds before win/lose screen is displayed
 
 var gameport = document.getElementById("gameport");
 var renderer = new PIXI.autoDetectRenderer(GAME_WIDTH, GAME_HEIGHT);
@@ -32,6 +32,7 @@ gameport.appendChild(renderer.view);
 // Time variables
 var time; // previous time from last request
 var dt = 0; // current change in time since last request
+var gametime = 0;
 
 // Misc game variables
 var jumpup = true;
@@ -64,11 +65,25 @@ var win = new PIXI.Container();
 var acorns = new PIXI.Container();
 
 // sprite textures
-var playertexture = PIXI.Texture.fromImage("player.png");
-var acorntexture = PIXI.Texture.fromImage("acorn.png");
-var wintertexture = PIXI.Texture.fromImage("winter.png");
-var screentexture = PIXI.Texture.fromImage('assets/screenbackground.png');
-var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
+var rightsquirrel;
+var leftsquirrel;
+var rightrun;
+var leftrun;
+var rightjump;
+var leftjump;
+var falltexture;
+var acorntexture;
+var wintertexture;
+var screentexture;
+var buttontexture;
+
+// sounds
+var selectsound;
+var fallsound;
+var jumpsound;
+var pickupsound;
+var losesound;
+var winsound;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 * Load and Prepare Data
@@ -77,9 +92,36 @@ var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
 PIXI.loader
 .add('map_json', 'map.json')
 .add('tileset', 'tileset.png')
+.add('spritesheet.json')
+.add("falling.mp3")
+.add("jump.mp3")
+.add("lose.mp3")
+.add("pickup.mp3")
+.add("select.mp3")
+.add("win.mp3")
 .load(ready);
 
 function ready(){
+
+  rightsquirrel = PIXI.Texture.fromFrame("rightsquirrel.png");
+  leftsquirrel = PIXI.Texture.fromFrame("leftsquirrel.png");
+  rightrun = PIXI.Texture.fromFrame("rightrun.png");
+  leftrun = PIXI.Texture.fromFrame("leftrun.png");
+  rightjump = PIXI.Texture.fromFrame("rightjump.png");
+  leftjump = PIXI.Texture.fromFrame("leftjump.png");
+  falltexture = PIXI.Texture.fromFrame("falling.png");
+
+  acorntexture = PIXI.Texture.fromFrame("acorn.png");
+  wintertexture = PIXI.Texture.fromImage("winter.png");
+  screentexture = PIXI.Texture.fromFrame('screenbackground.png');
+  buttontexture = PIXI.Texture.fromFrame('button.png');
+
+  selectsound = PIXI.audioManager.getAudio("select.mp3");
+  fallsound = PIXI.audioManager.getAudio("falling.mp3");
+  jumpsound = PIXI.audioManager.getAudio("jump.mp3");
+  pickupsound = PIXI.audioManager.getAudio("pickup.mp3");
+  losesound = PIXI.audioManager.getAudio("lose.mp3");
+  winsound = PIXI.audioManager.getAudio("win.mp3");
 
   buildTitle();
   buildMenu();
@@ -88,6 +130,8 @@ function ready(){
   buildLose();
   buildWin();
   buildGame();
+
+  console.log()
 
   animate();
 }
@@ -102,14 +146,14 @@ function buildTitle() {
 	menubutton.position.y = 512;
 	title.addChild(menubutton);
 
-	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
 	menutext.anchor.x = 0.5;
 	menutext.anchor.y = 0.5;
 	menutext.position.x = 128;
 	menutext.position.y = 32;
 	menubutton.addChild(menutext);
 
-	var titletext = new PIXI.Text('WELCOME TO SQUARE STEP', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+	var titletext = new PIXI.Text('WINTER IS COMING', {font : '40px Lucida Console, Monaco, monospace', fill: 0xbe6f39, align : 'center'});
 	titletext.anchor.x = 0.5;
 	titletext.anchor.y = 0.5;
 	titletext.position.x = 320;
@@ -127,7 +171,7 @@ function buildMenu() {
   var menusprite = new PIXI.Sprite(screentexture);
   menu.addChild(menusprite);
 
-  var menutext = new PIXI.Text('MAIN MENU', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+  var menutext = new PIXI.Text('MAIN MENU', {font : '40px Lucida Console, Monaco, monospace', fill: 0xbe6f39, align : 'center'});
   menutext.anchor.x = 0.5;
   menutext.anchor.y = 0.5;
   menutext.position.x = 320;
@@ -140,7 +184,7 @@ function buildMenu() {
 
   instrucbutton.position.x = 192;
   instrucbutton.position.y = 256;
-  var instructext = new PIXI.Text('INSTRUCTIONS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  var instructext = new PIXI.Text('INSTRUCTIONS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
   instructext.anchor.x = 0.5;
   instructext.anchor.y = 0.5;
   instructext.position.x = 128;
@@ -149,7 +193,7 @@ function buildMenu() {
 
   playbutton.position.x = 192;
   playbutton.position.y = 384;
-  var playtext = new PIXI.Text('PLAY', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  var playtext = new PIXI.Text('PLAY', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
   playtext.anchor.x = 0.5;
   playtext.anchor.y = 0.5;
   playtext.position.x = 128;
@@ -158,7 +202,7 @@ function buildMenu() {
 
   creditbutton.position.x = 192;
   creditbutton.position.y = 512;
-  var credittext = new PIXI.Text('CREDITS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  var credittext = new PIXI.Text('CREDITS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
   credittext.anchor.x = 0.5;
   credittext.anchor.y = 0.5;
   credittext.position.x = 128;
@@ -189,14 +233,14 @@ function buildInstructions() {
   menubutton.position.y = 512;
   instructions.addChild(menubutton);
 
-  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
   menutext.anchor.x = 0.5;
   menutext.anchor.y = 0.5;
   menutext.position.x = 128;
   menutext.position.y = 32;
   menubutton.addChild(menutext);
 
-  var instructext = new PIXI.Text("INSTRUCTIONS: Move the orange gem using the WASD keys to touch all of the blue tiles. Do not pass over the same tile twice.", {font : '24px Lucida Console, Monaco, monospace', fill: 0x5fcde4, wordWrap : true, wordWrapWidth : 500});
+  var instructext = new PIXI.Text("INSTRUCTIONS: Control the squirrel using the 'A' key to move left, the 'D' key to move right, and the 'W' or spacebar key to jump. Get to the top of the tree before winter arrives, and make sure not to touch any snow. Also, see how many of the randomly placed acorns you can collect.", {font : '24px Lucida Console, Monaco, monospace', fill: 0xbe6f39, wordWrap : true, wordWrapWidth : 500});
   instructext.anchor.x = 0.5;
   instructext.anchor.y = 0.5;
   instructext.position.x = 320;
@@ -219,7 +263,7 @@ function buildCredits() {
   menubutton.position.y = 512;
   credits.addChild(menubutton);
 
-  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
   menutext.anchor.x = 0.5;
   menutext.anchor.y = 0.5;
   menutext.position.x = 128;
@@ -254,7 +298,7 @@ function buildGame() {
       var gid = foreground[randindex];
       var cells = tu.surroundingCells(randindex, MAP_WIDTH);
       var belowID = foreground[cells[7]]; // GID below the position
-      if (gid == 0 && belowID != 0 && belowID != 5) { // place acorn
+      if (gid == 0 && belowID == 2 && belowID != 5) { // place acorn
         var acorn = new PIXI.Sprite(acorntexture);
         acorn.x = TILE_WIDTH * (randindex % MAP_WIDTH);
         acorn.y = TILE_HEIGHT * Math.floor(randindex / MAP_WIDTH);
@@ -265,7 +309,7 @@ function buildGame() {
     }
   }
 
-  player = new PIXI.Sprite(playertexture);
+  player = new PIXI.Sprite(rightsquirrel);
   player.anchor.x = 0.5;
   player.anchor.y = 0.5;
   player.x = world.worldWidth/2;
@@ -293,14 +337,14 @@ function buildLose() {
   menubutton.position.y = 512;
   lose.addChild(menubutton);
 
-  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
   menutext.anchor.x = 0.5;
   menutext.anchor.y = 0.5;
   menutext.position.x = 128;
   menutext.position.y = 32;
   menubutton.addChild(menutext);
 
-  var titletext = new PIXI.Text('YOU LOSE! :(', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+  var titletext = new PIXI.Text('YOU LOSE! :(', {font : '40px Lucida Console, Monaco, monospace', fill: 0xbe6f39, align : 'center'});
   titletext.anchor.x = 0.5;
   titletext.anchor.y = 0.5;
   titletext.position.x = 320;
@@ -323,14 +367,14 @@ function buildWin() {
   menubutton.position.y = 512;
   win.addChild(menubutton);
 
-  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x2d2a1c, align : 'center'});
   menutext.anchor.x = 0.5;
   menutext.anchor.y = 0.5;
   menutext.position.x = 128;
   menutext.position.y = 32;
   menubutton.addChild(menutext);
 
-  var titletext = new PIXI.Text('YOU WIN! :)', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+  var titletext = new PIXI.Text('YOU WIN! :)', {font : '40px Lucida Console, Monaco, monospace', fill: 0xbe6f39, align : 'center'});
   titletext.anchor.x = 0.5;
   titletext.anchor.y = 0.5;
   titletext.position.x = 320;
@@ -424,34 +468,39 @@ var playerstate = StateMachine.create({
   ],
   callbacks: {
     onrightjumping: function() {
-      //console.log("Right Jumping State");
+      jumpsound.play();
+      player.texture = rightjump;
       window.removeEventListener("keydown", gameKeyDown);
       window.removeEventListener("keyup", gameKeyUp);
       initialheight = player.y;
     },
     onrightstanding: function() {
-      //console.log("Right Standing State");
+      player.texture = rightsquirrel;
     },
     onrightrunning: function() {
-      //console.log("Right Running State");
+      player.texture = rightrun;
     },
     onleftjumping: function() {
-      //console.log("Left Jumping State");
+      jumpsound.play();
+      player.texture = leftjump;
       window.removeEventListener("keydown", gameKeyDown);
       window.removeEventListener("keyup", gameKeyUp);
       initialheight = player.y;
     },
     onleftstanding: function() {
-      //console.log("Left Standing State");
+      player.texture = leftsquirrel;
     },
     onleftrunning: function() {
-      //console.log("Left Running State");
+      player.texture = leftrun;
     },
     onfalling: function() {
-      //console.log("Falling");
+      player.texture = falltexture;
       window.removeEventListener("keydown", gameKeyDown);
       window.removeEventListener("keyup", gameKeyUp);
     },
+    onleavefalling: function () {
+      fallsound.play();
+    }
   }
 });
 
@@ -473,6 +522,8 @@ var windowstate = StateMachine.create({
     {name: "gamewon", from: "game", to: "win"}
   ],
   callbacks: {
+    onbeforeevent: function () {selectsound.play();},
+
     ontitle: function() {title.visible = true;},
     onleavetitle: function() {title.visible = false;},
 
@@ -498,11 +549,10 @@ var windowstate = StateMachine.create({
       game.visible = false;
       window.removeEventListener("keydown", gameKeyDown);
       window.removeEventListener("keyup", gameKeyUp);
-      //winter.y = world.worldHeight;
-      //gametext.text = acornscollected + '/' + MAXACORNS + ' ACORNS COLLECTED';
     },
 
     onlose: function() {
+      losesound.play();
       game.visible = true;
       setTimeout(function(){
         stage.y = 0;
@@ -514,6 +564,7 @@ var windowstate = StateMachine.create({
     onleavelose: function() {lose.visible = false;},
 
     onwin: function() {
+      winsound.play();
       game.visible = true;
       setTimeout(function(){
         stage.y = 0;
@@ -522,7 +573,7 @@ var windowstate = StateMachine.create({
         win.visible = true;
       }, TIMEOUT);
     },
-    onleavewin: function() {win.visible = false;},
+    onleavewin: function() {win.visible = false;}
   }
 });
 
@@ -595,6 +646,7 @@ function update_acorns() {
   var player_index = tu.getIndex(player.x, player.y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
   var gid = foreground[player_index];
   if (gid == 5) { // if player has hit an acorn
+    pickupsound.play();
     var x_acorn = TILE_WIDTH * (player_index % MAP_WIDTH);
     var y_acorn = TILE_HEIGHT * Math.floor(player_index / MAP_WIDTH);
     var i = 0;
@@ -732,8 +784,6 @@ function animate() {
     update_acorns();
     update_winter();
   }
-
-  console.log(windowstate.current);
 
   renderer.render(stage);
 }
