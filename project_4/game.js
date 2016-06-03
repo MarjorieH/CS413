@@ -3,7 +3,7 @@
 * CS413: Virtual Worlds
 * Project 4: Final
 * Winter is Coming
-* 1 June 2016
+* 2 June 2016
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // Game Constants
@@ -15,8 +15,8 @@ var MAP_WIDTH = 16;
 var MAP_HEIGHT = 40;
 var PLAYERSPEED = 4;
 var INITIALJUMPSPEED = 25;
-var FALLSPEED = 10;
 var GRAVITY = 0.98;
+var MAXACORNS = 50;
 
 var gameport = document.getElementById("gameport");
 var renderer = new PIXI.autoDetectRenderer(GAME_WIDTH, GAME_HEIGHT);
@@ -38,6 +38,7 @@ var falldistance = 0;
 
 // Tile/Map Variables
 var tu = new TileUtilities(PIXI);
+var world;
 var foreground;
 
 // Main PIXI containers
@@ -48,11 +49,17 @@ var credits = new PIXI.Container();
 var instructions = new PIXI.Container();
 var game = new PIXI.Container();
 
-var tu = new TileUtilities(PIXI);
+// game containers
+//var player = new PIXI.Container();
+var acorns = new PIXI.Container();
 
 var playertexture = PIXI.Texture.fromImage("player.png");
+var acorntexture = PIXI.Texture.fromImage("acorn.png");
 
 var player;
+var gametext;
+var acornscollected = 0;
+var numacorns = MAXACORNS;
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -70,10 +77,24 @@ function ready(){
   game.addChild(world);
   stage.addChild(game);
 
-  var logthis;
-  for (i = 0; i < foreground.length; i += 16){
-    logthis = foreground.slice(i, (i + 16));
-    console.log(logthis);
+  game.addChild(acorns);
+  // randomly place acorn sprites into the map
+  for (i = 0; i < MAXACORNS; i++) {
+    var notplaced = true;
+    while (notplaced) {
+      var randindex = Math.floor(Math.random() * foreground.length);
+      var gid = foreground[randindex];
+      var cells = tu.surroundingCells(randindex, MAP_WIDTH);
+      var belowID = foreground[cells[7]]; // GID below the position
+      if (gid == 0 && belowID != 0 && belowID != 5) { // place acorn
+        var acorn = new PIXI.Sprite(acorntexture);
+        acorn.x = TILE_WIDTH * (randindex % MAP_WIDTH);
+        acorn.y = TILE_HEIGHT * Math.floor(randindex / MAP_WIDTH);
+        acorns.addChild(acorn);
+        foreground[randindex] = 5;
+        notplaced = false;
+      }
+    }
   }
 
   player = new PIXI.Sprite(playertexture);
@@ -81,7 +102,19 @@ function ready(){
   player.anchor.y = 0.5;
   player.x = world.worldWidth/2;
   player.y = world.worldHeight - TILE_HEIGHT - player.height/2;
+
+  gametext = new PIXI.Text(acornscollected + '/' + MAXACORNS + ' ACORNS COLLECTED', {font : '20px Lucida Console, Monaco, monospace', fill: 0xFFFFFF, align : 'center'});
+  gametext.anchor.x = 0.5;
+  gametext.anchor.y = 0.5;
+  gametext.y = -GAME_HEIGHT/2 + 30;
+  player.addChild(gametext);
+
   game.addChild(player);
+
+  // Game event handlers
+  window.addEventListener("keyup", gameKeyUp);
+  window.addEventListener("keydown", gameKeyDown);
+
 
   var index = tu.getIndex(player.x, player.y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
   console.log(index);
@@ -91,11 +124,9 @@ function ready(){
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-* Event Handlers
+* Event Handler Functions
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// Keydown events start movement
-window.addEventListener("keydown", gameKeyDown);
 
 function gameKeyDown(e) {
   e.preventDefault();
@@ -103,15 +134,12 @@ function gameKeyDown(e) {
   if (e.repeat == true) return;
 
   if (e.keyCode == 87 || e.keyCode == 32) // W key or spacebar
-    playerstate.up();
+  playerstate.up();
   else if (e.keyCode == 65) // A key
-    playerstate.left();
+  playerstate.left();
   else if (e.keyCode == 68) // D key
-    playerstate.right();
+  playerstate.right();
 }
-
-// Keyup events end movement
-window.addEventListener("keyup", gameKeyUp);
 
 function gameKeyUp(e) {
   e.preventDefault();
@@ -219,40 +247,68 @@ function update_player() {
     jumpHelper(-1);
   }
   else if (playerstate.is("falling")) {
-    initial_below = detectBelow(player.x, player.y);
-    if (initial_below != 0) {
-      jumpspeed = INITIALJUMPSPEED;
-      falldistance = 0;
+    if (player.y >= (MAP_HEIGHT * TILE_HEIGHT)) { // prevent player from falling through the map
+      player.y = world.worldHeight - TILE_HEIGHT - player.height/2;
       window.addEventListener("keydown", gameKeyDown);
       window.addEventListener("keyup", gameKeyUp);
       playerstate.stand();
     }
     else {
-    new_y = player.y + jumpspeed;
-    falldistance += jumpspeed;
-    jumpspeed += GRAVITY;
-    below = detectBelow(player.x, new_y);
-    console.log(below);
-    if (below != 0) {
-      jumpspeed = INITIALJUMPSPEED;
-      falldistance = 0;
-      player.y = new_y - (new_y % TILE_HEIGHT) - player.height/2 + TILE_HEIGHT;
-      window.addEventListener("keydown", gameKeyDown);
-      window.addEventListener("keyup", gameKeyUp);
-      playerstate.stand();
-    }
-    else {
-      player.y = new_y;
+      initial_below = detectBelow(player.x, player.y);
+      if (initial_below != 0) {
+        jumpspeed = INITIALJUMPSPEED;
+        falldistance = 0;
+        window.addEventListener("keydown", gameKeyDown);
+        window.addEventListener("keyup", gameKeyUp);
+        playerstate.stand();
+      }
+      else {
+        new_y = player.y + jumpspeed;
+        falldistance += jumpspeed;
+        jumpspeed += GRAVITY;
+        below = detectBelow(player.x, new_y);
+        if (below != 0) {
+          jumpspeed = INITIALJUMPSPEED;
+          falldistance = 0;
+          player.y = new_y - (new_y % TILE_HEIGHT) - player.height/2 + TILE_HEIGHT;
+          window.addEventListener("keydown", gameKeyDown);
+          window.addEventListener("keyup", gameKeyUp);
+          playerstate.stand();
+        }
+        else {
+          player.y = new_y;
+        }
+      }
     }
   }
-  }
-  //var index = tu.getIndex(player.x, player.y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
-  //console.log(index);
 }
 
 function update_camera() {
   stage.y = -player.y + GAME_HEIGHT/2 + player.height/2;
   stage.y = -Math.max(0, Math.min(world.worldHeight - GAME_HEIGHT, -stage.y));
+}
+
+function update_acorns() {
+  var player_index = tu.getIndex(player.x, player.y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
+  var gid = foreground[player_index];
+  if (gid == 5) { // if player has hit an acorn
+    var x_acorn = TILE_WIDTH * (player_index % MAP_WIDTH);
+    var y_acorn = TILE_HEIGHT * Math.floor(player_index / MAP_WIDTH);
+    var i = 0;
+    var notfound = true;
+    while (i < numacorns || notfound) {
+      var acorn = acorns.getChildAt(i);
+      if (acorn.x == x_acorn && acorn.y == y_acorn) {
+        foreground[player_index] = 0;
+        notfound = false;
+        acorns.removeChildAt(i);
+        numacorns--;
+        acornscollected++;
+        gametext.text = acornscollected + '/' + MAXACORNS + ' ACORNS COLLECTED';
+      }
+      i++;
+    }
+  }
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -288,52 +344,56 @@ function jumpHelper(direction) {
     }
   }
   else { // "jumping" downwards
-    jumpup = false;
-    new_x = player.x + direction*PLAYERSPEED;
-    new_y = player.y + jumpspeed;
-    below = detectBelow(new_x, new_y);
-    collision = detectCollision(new_x, new_y);
-    if (below == 0 && collision != 3) {
-      player.x = new_x;
-      player.y = new_y;
-      jumpspeed += GRAVITY;
-    }
-    else if (below == 2 || below == 1) {
-      player.x = new_x;
-      player.y = new_y - (new_y % TILE_HEIGHT) - player.height/2 + TILE_HEIGHT;
-      jumpup = true;
-      jumpspeed = INITIALJUMPSPEED;
+    if (player.y >= (MAP_HEIGHT * TILE_HEIGHT)) { // prevent player from falling through the map
+      player.y = world.worldHeight - TILE_HEIGHT - player.height/2;
       window.addEventListener("keydown", gameKeyDown);
       window.addEventListener("keyup", gameKeyUp);
       playerstate.stand();
     }
-    else if (collision == 3) {
-      jumpup = true;
-      playerstate.fall();
+    else {
+      jumpup = false;
+      new_x = player.x + direction*PLAYERSPEED;
+      new_y = player.y + jumpspeed;
+      below = detectBelow(new_x, new_y);
+      collision = detectCollision(new_x, new_y);
+      if (below == 0 && collision != 3) {
+        player.x = new_x;
+        player.y = new_y;
+        jumpspeed += GRAVITY;
+      }
+      else if (below == 2 || below == 1) {
+        player.x = new_x;
+        player.y = new_y - (new_y % TILE_HEIGHT) - player.height/2 + TILE_HEIGHT;
+        jumpup = true;
+        jumpspeed = INITIALJUMPSPEED;
+        window.addEventListener("keydown", gameKeyDown);
+        window.addEventListener("keyup", gameKeyUp);
+        playerstate.stand();
+      }
+      else if (collision == 3) {
+        jumpup = true;
+        playerstate.fall();
+      }
     }
   }
 }
 
 // returns 0 if no collision
 // returns 1 if grass collision
-// returns 2 if tree collision
+// returns 2 if branch collision
+// returns 3
 function detectCollision(new_x, new_y) {
   var new_index = tu.getIndex(new_x, new_y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
   var tileID = foreground[new_index];
 
-  if (tileID == 1) {
-    console.log("Grass Collision");
+  if (tileID == 1)
     return 1;
-  }
-  else if (tileID == 2) {
-    console.log("Tree Collision");
+  else if (tileID == 2)
     return 2;
-  }
-  else if (tileID == 4) {
-    console.log("Trunk Collision");
+  else if (tileID == 4)
     return 3;
-  }
-  return 0; // no collision detected
+  else
+    return 0; // no collision detected
 }
 
 // returns 0 if there is nothing below
@@ -343,17 +403,13 @@ function detectBelow(new_x, new_y) {
   var new_index = tu.getIndex(new_x, new_y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
   var cells = tu.surroundingCells(new_index, MAP_WIDTH);
   var belowID = foreground[cells[7]]; // GID below the position
-  //var belowID = getBelow(foreground, new_index, MAP_WIDTH);
 
-  if (belowID == 1) {
-    console.log("Grass Below");
+  if (belowID == 1)
     return 1;
-  }
-  else if (belowID == 2) {
-    console.log("Branch Below");
+  else if (belowID == 2)
     return 2;
-  }
-  return 0;
+  else
+    return 0;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -366,9 +422,9 @@ function animate() {
   dt = now - (time || now);
   time = now;
 
-  update_player();
   update_camera();
+  update_player();
+  update_acorns();
 
   renderer.render(stage);
 }
-//animate();
