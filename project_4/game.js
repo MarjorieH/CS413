@@ -7,16 +7,19 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // Game Constants
-var GAME_WIDTH = 640;
-var GAME_HEIGHT = 640;
-var TILE_HEIGHT = 40;
-var TILE_WIDTH = 40;
-var MAP_WIDTH = 16;
-var MAP_HEIGHT = 40;
-var PLAYERSPEED = 4;
-var INITIALJUMPSPEED = 25;
+var GAME_WIDTH = 640; // width of the gamescreen in pixels
+var GAME_HEIGHT = 640; // width of the gamescreen in pixels
+var TILE_HEIGHT = 40; // height of the tiles in pixels
+var TILE_WIDTH = 40; // width of the tiles in pixels
+var MAP_WIDTH = 16; // width of the map in tiles
+var MAP_HEIGHT = 40; // height of the mpa in tiles
+var PLAYERSPEED = 4; // speed of the player in pixels/frame
+var INITIALJUMPSPEED = 25; // speed of jumping in pixels/frame
 var GRAVITY = 0.98;
 var MAXACORNS = 50;
+var WINTERSPEED = 0.2;
+var WINHEIGHT = 100; // distance from the top to win
+var TIMEOUT = 3000; // miliseconds before win/lose screen is displayed
 
 var gameport = document.getElementById("gameport");
 var renderer = new PIXI.autoDetectRenderer(GAME_WIDTH, GAME_HEIGHT);
@@ -30,11 +33,17 @@ gameport.appendChild(renderer.view);
 var time; // previous time from last request
 var dt = 0; // current change in time since last request
 
-// Player variables
+// Misc game variables
 var jumpup = true;
 var jumpspeed = INITIALJUMPSPEED;
 var initialheight = 0;
 var falldistance = 0;
+var player;
+var winter;
+var gametext;
+var acornscollected = 0;
+var numacorns = MAXACORNS;
+var gamestate = 0; // 0 = neutral; 1 = win; 2 = lose
 
 // Tile/Map Variables
 var tu = new TileUtilities(PIXI);
@@ -48,22 +57,21 @@ var menu = new PIXI.Container();
 var credits = new PIXI.Container();
 var instructions = new PIXI.Container();
 var game = new PIXI.Container();
+var lose = new PIXI.Container();
+var win = new PIXI.Container();
 
 // game containers
-//var player = new PIXI.Container();
 var acorns = new PIXI.Container();
 
+// sprite textures
 var playertexture = PIXI.Texture.fromImage("player.png");
 var acorntexture = PIXI.Texture.fromImage("acorn.png");
-
-var player;
-var gametext;
-var acornscollected = 0;
-var numacorns = MAXACORNS;
-
+var wintertexture = PIXI.Texture.fromImage("winter.png");
+var screentexture = PIXI.Texture.fromImage('assets/screenbackground.png');
+var buttontexture = PIXI.Texture.fromImage('assets/genericbutton.png');
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-* Load Data
+* Load and Prepare Data
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 PIXI.loader
@@ -72,10 +80,170 @@ PIXI.loader
 .load(ready);
 
 function ready(){
+
+  buildTitle();
+  buildMenu();
+  buildInstructions();
+  buildCredits();
+  buildLose();
+  buildWin();
+  buildGame();
+
+  animate();
+}
+
+function buildTitle() {
+  stage.addChild(title);
+	var titlesprite = new PIXI.Sprite(screentexture);
+	title.addChild(titlesprite);
+
+	var menubutton = new PIXI.Sprite(buttontexture);
+	menubutton.position.x = 192;
+	menubutton.position.y = 512;
+	title.addChild(menubutton);
+
+	var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+	menutext.anchor.x = 0.5;
+	menutext.anchor.y = 0.5;
+	menutext.position.x = 128;
+	menutext.position.y = 32;
+	menubutton.addChild(menutext);
+
+	var titletext = new PIXI.Text('WELCOME TO SQUARE STEP', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+	titletext.anchor.x = 0.5;
+	titletext.anchor.y = 0.5;
+	titletext.position.x = 320;
+	titletext.position.y = 320;
+	title.addChild(titletext);
+
+	menubutton.interactive = true;
+	menubutton.on('mousedown', handleMenu);
+
+  title.visible = true;
+}
+
+function buildMenu() {
+  stage.addChild(menu);
+  var menusprite = new PIXI.Sprite(screentexture);
+  menu.addChild(menusprite);
+
+  var menutext = new PIXI.Text('MAIN MENU', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+  menutext.anchor.x = 0.5;
+  menutext.anchor.y = 0.5;
+  menutext.position.x = 320;
+  menutext.position.y = 128;
+  menu.addChild(menutext);
+
+  var instrucbutton = new PIXI.Sprite(buttontexture);
+  var playbutton = new PIXI.Sprite(buttontexture);
+  var creditbutton = new PIXI.Sprite(buttontexture);
+
+  instrucbutton.position.x = 192;
+  instrucbutton.position.y = 256;
+  var instructext = new PIXI.Text('INSTRUCTIONS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  instructext.anchor.x = 0.5;
+  instructext.anchor.y = 0.5;
+  instructext.position.x = 128;
+  instructext.position.y = 32;
+  instrucbutton.addChild(instructext);
+
+  playbutton.position.x = 192;
+  playbutton.position.y = 384;
+  var playtext = new PIXI.Text('PLAY', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  playtext.anchor.x = 0.5;
+  playtext.anchor.y = 0.5;
+  playtext.position.x = 128;
+  playtext.position.y = 32;
+  playbutton.addChild(playtext);
+
+  creditbutton.position.x = 192;
+  creditbutton.position.y = 512;
+  var credittext = new PIXI.Text('CREDITS', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  credittext.anchor.x = 0.5;
+  credittext.anchor.y = 0.5;
+  credittext.position.x = 128;
+  credittext.position.y = 32;
+  creditbutton.addChild(credittext);
+
+  menu.addChild(instrucbutton);
+  menu.addChild(playbutton);
+  menu.addChild(creditbutton);
+
+  instrucbutton.interactive = true;
+  instrucbutton.on('mousedown', handleInstruct);
+  playbutton.interactive = true;
+  playbutton.on('mousedown', handlePlay);
+  creditbutton.interactive = true;
+  creditbutton.on('mousedown', handleCredits);
+
+  menu.visible = false;
+}
+
+function buildInstructions() {
+  stage.addChild(instructions);
+  var instructionssprite = new PIXI.Sprite(screentexture);
+  instructions.addChild(instructionssprite);
+
+  var menubutton = new PIXI.Sprite(buttontexture);
+  menubutton.position.x = 192;
+  menubutton.position.y = 512;
+  instructions.addChild(menubutton);
+
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  menutext.anchor.x = 0.5;
+  menutext.anchor.y = 0.5;
+  menutext.position.x = 128;
+  menutext.position.y = 32;
+  menubutton.addChild(menutext);
+
+  var instructext = new PIXI.Text("INSTRUCTIONS: Move the orange gem using the WASD keys to touch all of the blue tiles. Do not pass over the same tile twice.", {font : '24px Lucida Console, Monaco, monospace', fill: 0x5fcde4, wordWrap : true, wordWrapWidth : 500});
+  instructext.anchor.x = 0.5;
+  instructext.anchor.y = 0.5;
+  instructext.position.x = 320;
+  instructext.position.y = 320;
+  instructions.addChild(instructext);
+
+  menubutton.interactive = true;
+  menubutton.on('mousedown', handleMenu);
+
+  instructions.visible = false;
+}
+
+function buildCredits() {
+  stage.addChild(credits);
+  var creditssprite = new PIXI.Sprite(screentexture);
+  credits.addChild(creditssprite);
+
+  var menubutton = new PIXI.Sprite(buttontexture);
+  menubutton.position.x = 192;
+  menubutton.position.y = 512;
+  credits.addChild(menubutton);
+
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  menutext.anchor.x = 0.5;
+  menutext.anchor.y = 0.5;
+  menutext.position.x = 128;
+  menutext.position.y = 32;
+  menubutton.addChild(menutext);
+
+  var credittext = new PIXI.Text("Game Development, Art, and Sound Effects by Marjorie Hahn", {font : '24px Lucida Console, Monaco, monospace', fill: 0x5fcde4, wordWrap : true, align: 'center', wordWrapWidth : 500});
+  credittext.anchor.x = 0.5;
+  credittext.anchor.y = 0.5;
+  credittext.position.x = 320;
+  credittext.position.y = 320;
+  credits.addChild(credittext);
+
+  menubutton.interactive = true;
+  menubutton.on('mousedown', handleMenu);
+
+  credits.visible = false;
+}
+
+function buildGame() {
+  stage.addChild(game);
   world = tu.makeTiledWorld("map_json", "tileset.png");
   foreground = world.getObject("foreground").data;
   game.addChild(world);
-  stage.addChild(game);
 
   game.addChild(acorns);
   // randomly place acorn sprites into the map
@@ -102,31 +270,98 @@ function ready(){
   player.anchor.y = 0.5;
   player.x = world.worldWidth/2;
   player.y = world.worldHeight - TILE_HEIGHT - player.height/2;
+  game.addChild(player);
 
   gametext = new PIXI.Text(acornscollected + '/' + MAXACORNS + ' ACORNS COLLECTED', {font : '20px Lucida Console, Monaco, monospace', fill: 0xFFFFFF, align : 'center'});
   gametext.anchor.x = 0.5;
   gametext.anchor.y = 0.5;
-  gametext.y = -GAME_HEIGHT/2 + 30;
+  gametext.y = -GAME_HEIGHT/2;
   player.addChild(gametext);
 
-  game.addChild(player);
-
-  // Game event handlers
-  window.addEventListener("keyup", gameKeyUp);
-  window.addEventListener("keydown", gameKeyDown);
-
-
-  var index = tu.getIndex(player.x, player.y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
-  console.log(index);
-
-  animate();
+  winter = new PIXI.Sprite(wintertexture);
+  game.addChild(winter);
+  game.visible = false;
 }
 
+function buildLose() {
+  stage.addChild(lose);
+  var losesprite = new PIXI.Sprite(screentexture);
+  lose.addChild(losesprite);
+
+  var menubutton = new PIXI.Sprite(buttontexture);
+  menubutton.position.x = 192;
+  menubutton.position.y = 512;
+  lose.addChild(menubutton);
+
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  menutext.anchor.x = 0.5;
+  menutext.anchor.y = 0.5;
+  menutext.position.x = 128;
+  menutext.position.y = 32;
+  menubutton.addChild(menutext);
+
+  var titletext = new PIXI.Text('YOU LOSE! :(', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+  titletext.anchor.x = 0.5;
+  titletext.anchor.y = 0.5;
+  titletext.position.x = 320;
+  titletext.position.y = 320;
+  lose.addChild(titletext);
+
+  menubutton.interactive = true;
+  menubutton.on('mousedown', handleMenu);
+
+  lose.visible = false;
+}
+
+function buildWin() {
+  stage.addChild(win);
+  var winsprite = new PIXI.Sprite(screentexture);
+  win.addChild(winsprite);
+
+  var menubutton = new PIXI.Sprite(buttontexture);
+  menubutton.position.x = 192;
+  menubutton.position.y = 512;
+  win.addChild(menubutton);
+
+  var menutext = new PIXI.Text('MAIN MENU', {font : '20px Lucida Console, Monaco, monospace', fill: 0x1d38ff, align : 'center'});
+  menutext.anchor.x = 0.5;
+  menutext.anchor.y = 0.5;
+  menutext.position.x = 128;
+  menutext.position.y = 32;
+  menubutton.addChild(menutext);
+
+  var titletext = new PIXI.Text('YOU WIN! :)', {font : '40px Lucida Console, Monaco, monospace', fill: 0x5fcde4, align : 'center'});
+  titletext.anchor.x = 0.5;
+  titletext.anchor.y = 0.5;
+  titletext.position.x = 320;
+  titletext.position.y = 320;
+  win.addChild(titletext);
+
+  menubutton.interactive = true;
+  menubutton.on('mousedown', handleMenu);
+
+  win.visible = false;
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 * Event Handler Functions
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+function handleMenu(e) {
+  windowstate.menuclick();
+}
+
+function handleInstruct(e) {
+  windowstate.instructionsclick();
+}
+
+function handlePlay(e) {
+  windowstate.gameclick();
+}
+
+function handleCredits(e) {
+  windowstate.creditsclick();
+}
 
 function gameKeyDown(e) {
   e.preventDefault();
@@ -134,11 +369,11 @@ function gameKeyDown(e) {
   if (e.repeat == true) return;
 
   if (e.keyCode == 87 || e.keyCode == 32) // W key or spacebar
-  playerstate.up();
+    playerstate.up();
   else if (e.keyCode == 65) // A key
-  playerstate.left();
+    playerstate.left();
   else if (e.keyCode == 68) // D key
-  playerstate.right();
+    playerstate.right();
 }
 
 function gameKeyUp(e) {
@@ -220,11 +455,87 @@ var playerstate = StateMachine.create({
   }
 });
 
+var windowstate = StateMachine.create({
+  initial: {state: 'title', event: 'init'},
+  error: function() {},
+  events: [
+    {name: "menuclick", from: "title", to: "menu"},
+    {name: "menuclick", from: "win", to: "menu"},
+    {name: "menuclick", from: "lose", to: "menu"},
+    {name: "menuclick", from: "instructions", to: "menu"},
+    {name: "menuclick", from: "credits", to: "menu"},
+
+    {name: "gameclick", from: "menu", to: "game"},
+    {name: "instructionsclick", from: "menu", to: "instructions"},
+    {name: "creditsclick", from: "menu", to: "credits"},
+
+    {name: "gamelost", from: "game", to: "lose"},
+    {name: "gamewon", from: "game", to: "win"}
+  ],
+  callbacks: {
+    ontitle: function() {title.visible = true;},
+    onleavetitle: function() {title.visible = false;},
+
+    onmenu: function() {menu.visible = true;},
+    onleavemenu: function() {menu.visible = false;},
+
+    oninstructions: function() {instructions.visible = true;},
+    onleaveinstructions: function() {instructions.visible = false;},
+
+    oncredits: function() {credits.visible = true;},
+    onleavecredits: function() {credits.visible = false;},
+
+    ongame: function () {
+      game.visible = true;
+      window.addEventListener("keydown", gameKeyDown);
+      window.addEventListener("keyup", gameKeyUp);
+      winter.y = world.worldHeight;
+      gametext.text = acornscollected + '/' + MAXACORNS + ' ACORNS COLLECTED';
+      player.x = world.worldWidth/2;
+      player.y = world.worldHeight - TILE_HEIGHT - player.height/2;
+    },
+    onleavegame: function () {
+      game.visible = false;
+      window.removeEventListener("keydown", gameKeyDown);
+      window.removeEventListener("keyup", gameKeyUp);
+      //winter.y = world.worldHeight;
+      //gametext.text = acornscollected + '/' + MAXACORNS + ' ACORNS COLLECTED';
+    },
+
+    onlose: function() {
+      game.visible = true;
+      setTimeout(function(){
+        stage.y = 0;
+        stage.x = 0;
+        game.visible = false;
+        lose.visible = true;
+      }, TIMEOUT);
+    },
+    onleavelose: function() {lose.visible = false;},
+
+    onwin: function() {
+      game.visible = true;
+      setTimeout(function(){
+        stage.y = 0;
+        stage.x = 0;
+        game.visible = false;
+        win.visible = true;
+      }, TIMEOUT);
+    },
+    onleavewin: function() {win.visible = false;},
+  }
+});
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 * Update Functions
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 function update_player() {
+  if (player.y <= WINHEIGHT) {
+    gametext.text = 'YOU WIN!';
+    windowstate.gamewon();
+  }
+
   if (playerstate.is("leftstanding") || playerstate.is("rightstanding")) {
     return;
   }
@@ -234,18 +545,10 @@ function update_player() {
   var collision;
   var below;
 
-  if (playerstate.is("leftrunning")) {
-    runHelper(-1);
-  }
-  else if (playerstate.is("rightrunning")) {
-    runHelper(1);
-  }
-  else if (playerstate.is("rightjumping")) {
-    jumpHelper(1);
-  }
-  else if (playerstate.is("leftjumping")) {
-    jumpHelper(-1);
-  }
+  if (playerstate.is("leftrunning")) runHelper(-1);
+  else if (playerstate.is("rightrunning")) runHelper(1);
+  else if (playerstate.is("rightjumping")) jumpHelper(1);
+  else if (playerstate.is("leftjumping")) jumpHelper(-1);
   else if (playerstate.is("falling")) {
     if (player.y >= (MAP_HEIGHT * TILE_HEIGHT)) { // prevent player from falling through the map
       player.y = world.worldHeight - TILE_HEIGHT - player.height/2;
@@ -308,6 +611,14 @@ function update_acorns() {
       }
       i++;
     }
+  }
+}
+
+function update_winter() {
+  winter.y = winter.y - WINTERSPEED;
+  if (winter.y <= player.y) {
+    gametext.text = 'YOU LOSE!';
+    windowstate.gamelost();
   }
 }
 
@@ -381,19 +692,15 @@ function jumpHelper(direction) {
 // returns 0 if no collision
 // returns 1 if grass collision
 // returns 2 if branch collision
-// returns 3
+// returns 3 if trunk collision
 function detectCollision(new_x, new_y) {
   var new_index = tu.getIndex(new_x, new_y, TILE_WIDTH, TILE_HEIGHT, MAP_WIDTH);
   var tileID = foreground[new_index];
 
-  if (tileID == 1)
-    return 1;
-  else if (tileID == 2)
-    return 2;
-  else if (tileID == 4)
-    return 3;
-  else
-    return 0; // no collision detected
+  if (tileID == 1) return 1;
+  else if (tileID == 2) return 2;
+  else if (tileID == 4) return 3;
+  else return 0; // no collision detected
 }
 
 // returns 0 if there is nothing below
@@ -404,12 +711,9 @@ function detectBelow(new_x, new_y) {
   var cells = tu.surroundingCells(new_index, MAP_WIDTH);
   var belowID = foreground[cells[7]]; // GID below the position
 
-  if (belowID == 1)
-    return 1;
-  else if (belowID == 2)
-    return 2;
-  else
-    return 0;
+  if (belowID == 1) return 1;
+  else if (belowID == 2) return 2;
+  else return 0;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -422,9 +726,14 @@ function animate() {
   dt = now - (time || now);
   time = now;
 
-  update_camera();
-  update_player();
-  update_acorns();
+  if (windowstate.is("game")) {
+    update_camera();
+    update_player();
+    update_acorns();
+    update_winter();
+  }
+
+  console.log(windowstate.current);
 
   renderer.render(stage);
 }
